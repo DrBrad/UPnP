@@ -95,45 +95,63 @@ impl Gateway {
         IpAddr::V4(Ipv4Addr::UNSPECIFIED)
     }
 
+    fn command(&self, action: String, params: HashMap<String, String>) -> io::Result<HashMap<String, String>> {
+        let response = HashMap::new();
+
+        let soap = format!("<?xml version=\"1.0\"?>\r\n\
+            <SOAP-ENV:Envelope xmlns:SOAP-ENV=\"http://schemas.xmlsoap.org/soap/envelope/\" SOAP-ENV:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">\
+            <SOAP-ENV:Body>\
+            <m:{} xmlns:m=\"{}\">", action, self.service_type);
+
+        if !params.is_empty() {
+            //return Err(io::Error::new(io::ErrorKind::Other, "Params is empty"));
+        }
+
+
+
+        Ok(response)
+        /*
+        HashMap<String, String> ret = new HashMap<>();
+        String soap = "<?xml version=\"1.0\"?>\r\n" +
+            "<SOAP-ENV:Envelope xmlns:SOAP-ENV=\"http://schemas.xmlsoap.org/soap/envelope/\" SOAP-ENV:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">" +
+            "<SOAP-ENV:Body>" +
+            "<m:"+action+" xmlns:m=\""+serviceType+"\">";
+
+        if(params != null){
+            for(Map.Entry<String, String> entry : params.entrySet()){
+                soap += "<"+entry.getKey()+">"+entry.getValue()+"</" + entry.getKey()+">";
+            }
+        }
+        soap += "</m:"+action+"></SOAP-ENV:Body></SOAP-ENV:Envelope>";
+        byte[] req = soap.getBytes();
+        HttpURLConnection conn = (HttpURLConnection) new URL(controlUrl).openConnection();
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        conn.setRequestProperty("Content-Type", "text/xml");
+        conn.setRequestProperty("SOAPAction", "\""+serviceType+"#"+action+"\"");
+        conn.setRequestProperty("Connection", "Close");
+        conn.setRequestProperty("Content-Length", ""+req.length);
+        conn.getOutputStream().write(req);
+
+        Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(conn.getInputStream());
+        NodeIterator iterator = ((DocumentTraversal) document).createNodeIterator(document.getDocumentElement(), NodeFilter.SHOW_ELEMENT, null, true);
+        Node node;
+        while((node = iterator.nextNode()) != null){
+            try{
+                if(node.getFirstChild().getNodeType() == Node.TEXT_NODE){
+                    ret.put(node.getNodeName(), node.getTextContent());
+                }
+            }catch(Exception e){
+                e.printStackTrace();
+            }
+        }
+        conn.disconnect();
+        return ret;
+        */
+    }
     /*
 
         private HashMap<String, String> command(String action, Map<String, String> params)throws Exception {
-            HashMap<String, String> ret = new HashMap<>();
-            String soap = "<?xml version=\"1.0\"?>\r\n" +
-                    "<SOAP-ENV:Envelope xmlns:SOAP-ENV=\"http://schemas.xmlsoap.org/soap/envelope/\" SOAP-ENV:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">" +
-                    "<SOAP-ENV:Body>" +
-                    "<m:"+action+" xmlns:m=\""+serviceType+"\">";
-
-            if(params != null){
-                for(Map.Entry<String, String> entry : params.entrySet()){
-                    soap += "<"+entry.getKey()+">"+entry.getValue()+"</" + entry.getKey()+">";
-                }
-            }
-            soap += "</m:"+action+"></SOAP-ENV:Body></SOAP-ENV:Envelope>";
-            byte[] req = soap.getBytes();
-            HttpURLConnection conn = (HttpURLConnection) new URL(controlUrl).openConnection();
-            conn.setRequestMethod("POST");
-            conn.setDoOutput(true);
-            conn.setRequestProperty("Content-Type", "text/xml");
-            conn.setRequestProperty("SOAPAction", "\""+serviceType+"#"+action+"\"");
-            conn.setRequestProperty("Connection", "Close");
-            conn.setRequestProperty("Content-Length", ""+req.length);
-            conn.getOutputStream().write(req);
-
-            Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(conn.getInputStream());
-            NodeIterator iterator = ((DocumentTraversal) document).createNodeIterator(document.getDocumentElement(), NodeFilter.SHOW_ELEMENT, null, true);
-            Node node;
-            while((node = iterator.nextNode()) != null){
-                try{
-                    if(node.getFirstChild().getNodeType() == Node.TEXT_NODE){
-                        ret.put(node.getNodeName(), node.getTextContent());
-                    }
-                }catch(Exception e){
-                    e.printStackTrace();
-                }
-            }
-            conn.disconnect();
-            return ret;
         }
 
         public boolean openPort(int port, boolean udp){
