@@ -1,6 +1,8 @@
 use std::collections::HashMap;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr, TcpStream};
 use std::io;
+use std::io::{Read, Write};
+use crate::utils::url::Url;
 
 pub struct Gateway {
     address: IpAddr,
@@ -40,7 +42,27 @@ impl Gateway {
             }
         }
 
-        println!("{}", headers.get("Location").unwrap());
+        let control_url = Url::new(headers.get("Location").unwrap());
+
+        println!("{}", control_url.to_string());
+
+
+
+        let mut stream = TcpStream::connect((control_url.host.clone(), control_url.port.clone())).unwrap();
+
+        let request = format!("GET {} HTTP/1.1\r\n\
+                   Host: {}\r\n\
+                   Content-Type: text/xml\r\n\r\n", control_url.path.clone(), control_url.host.clone());
+        stream.write_all(request.as_bytes()).unwrap();
+
+        let mut response = Vec::new();
+        let mut reader = io::BufReader::new(stream);
+        reader.read_to_end(&mut response).unwrap();
+
+        let response_str = String::from_utf8_lossy(&response);
+
+        println!("Response:\n{}", response_str);
+
 
 
 
