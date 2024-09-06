@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr};
 use std::io;
 
@@ -25,7 +26,29 @@ impl Gateway {
 
     pub fn new(buf: &[u8], size: usize, address: IpAddr) -> io::Result<Self> {
         let response = std::str::from_utf8(&buf[..size]).unwrap_or("[Invalid UTF-8]");
-        println!("Received from: {}", response);
+
+
+        let mut lines = response.lines();
+        lines.next();
+
+        let mut headers = HashMap::new();
+        for line in lines {
+            if line.is_empty() {
+                break;
+            }
+            if let Some((key, value)) = line.split_once(':') {
+                let key = key.trim();
+                let value = value.trim();
+                headers.insert(key.to_string(), value.to_string());
+            }
+        }
+
+        // Print extracted headers
+        //for (key, value) in &headers {
+        //    println!("{}: {}", key, value);
+        //}
+
+        println!("{}", headers.get("Location").unwrap());
         /*
         let self_ = Self {
             address,
