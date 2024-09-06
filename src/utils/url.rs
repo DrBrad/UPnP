@@ -34,6 +34,6 @@ impl Url {
     }
 
     pub fn to_string(&self) -> String {
-        format!("{}://{}:{}/{}", self.scheme, self.host, self.port, self.path)
+        format!("{}://{}:{}{}", self.scheme, self.host, self.port, self.path)
     }
 }
