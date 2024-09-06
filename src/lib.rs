@@ -10,6 +10,7 @@ mod tests {
 
     #[test]
     fn open_port() {
+        //println!("TEST");
         let upnp = UPnP::new();
     }
 }

@@ -16,8 +16,8 @@ pub struct UPnP {
 impl UPnP {
 
     pub fn new() -> io::Result<Self> {
-        //let socket = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0)))?;
-        let local = SocketAddr::new(IpAddr::from([192, 168, 8, 13]), 0);
+        //let local = SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0));
+        let local = SocketAddr::new(IpAddr::from([192, 168, 0, 129]), 0);
         let socket = UdpSocket::bind(local)?;
 
         for req in REQUESTS {
@@ -45,19 +45,19 @@ impl UPnP {
         Err(io::Error::new(io::ErrorKind::Other, "Could not find gateway"))
     }
 
-    pub fn open_tcp_port(&self, port: u32) {
+    pub fn open_tcp_port(&self, port: u16) {
         //self.gateway.open_port(port, false)
     }
 
-    pub fn close_tcp_port(&self, port: u32) {
+    pub fn close_tcp_port(&self, port: u16) {
         //self.gateway.close_port(port, false)
     }
 
-    pub fn open_udp_port(&self, port: u32) {
+    pub fn open_udp_port(&self, port: u16) {
         //self.gateway.open_port(port, true)
     }
 
-    pub fn close_udp_port(&self, port: u32) {
+    pub fn close_udp_port(&self, port: u16) {
         //self.gateway.close_port(port, true)
     }
 
@@ -65,11 +65,11 @@ impl UPnP {
         self.gateway.as_ref().unwrap().get_external_ip()
     }
 
-    pub fn is_tcp_mapped(&self, port: u32) {
+    pub fn is_tcp_mapped(&self, port: u16) {
         //self.gateway.is_mapped(port, false)
     }
 
-    pub fn is_udp_mapped(&self, port: u32) {
+    pub fn is_udp_mapped(&self, port: u16) {
         //self.gateway.is_mapped(port, true)
     }
 }
