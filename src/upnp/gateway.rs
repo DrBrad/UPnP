@@ -6,7 +6,7 @@ use crate::utils::url::Url;
 
 pub struct Gateway {
     address: IpAddr,
-    control_url: String,
+    control_url: Url,
     service_type: String
 }
 
@@ -42,17 +42,17 @@ impl Gateway {
             }
         }
 
-        let control_url = Url::new(headers.get("Location").unwrap());
+        let mut url = Url::new(headers.get("Location").unwrap());
 
-        println!("{}", control_url.to_string());
+        println!("Location: {}", url.to_string());
 
 
 
-        let mut stream = TcpStream::connect((control_url.host.clone(), control_url.port.clone())).unwrap();
+        let mut stream = TcpStream::connect((url.host.clone(), url.port.clone())).unwrap();
 
         let request = format!("GET {} HTTP/1.1\r\n\
                    Host: {}\r\n\
-                   Content-Type: text/xml\r\n\r\n", control_url.path.clone(), control_url.host.clone());
+                   Content-Type: text/xml\r\n\r\n", url.path.clone(), url.host.clone());
         stream.write_all(request.as_bytes()).unwrap();
 
         let mut response = Vec::new();
@@ -61,99 +61,40 @@ impl Gateway {
 
         let response_str = String::from_utf8_lossy(&response);
 
-        println!("Response:\n{}", response_str);
+        //println!("Response:\n{}", response_str);
 
 
 
+        let service_list_start = response_str.find("<serviceList>").unwrap();
+        let service_list_content = &response_str[service_list_start..response_str[service_list_start..].find("</serviceList>").unwrap() + service_list_start];
+
+        let service_start = service_list_content.find("<service>").unwrap();
+        let service_content = &service_list_content[service_start..service_list_content[service_start..].find("</service>").unwrap() + service_start];
+
+        let control_url_start = service_content.find("<controlURL>").unwrap() + "<controlURL>".len();
+        let control_url = service_content[control_url_start..service_content[control_url_start..].find("</controlURL>").unwrap() + control_url_start].to_string();
+        url.path = control_url;
+
+        let service_type_start = service_content.find("<serviceType>").unwrap() + "<serviceType>".len();
+        let service_type = service_content[service_type_start..service_content[service_type_start..].find("</serviceType>").unwrap() + service_type_start].to_string();
 
 
-        /*
-        let self_ = Self {
-            address,
-            ..Default::default()
-        };
-        */
-
-        //let data = std::str::from_utf8(data)?.trim().to_string();
-
-
-        /*
-        // Regex to find "Location" in the response
-        let location_pattern = regex_find("(?i)Location:(.*)", &data);
-        if let Some(url) = location_pattern {
-            control_url = url.trim().to_string();
-        }
-
-        // Fetch XML data from the control URL
-        let response = get_http_response(&control_url)?;
-
-        // Regex to find serviceType and controlURL in the XML response
-        let url_pattern = regex_find("(?i)<controlURL>(.*?)</controlURL>", &response);
-        let service_type_pattern = regex_find("(?i)<serviceType>(.*?)</serviceType>", &response);
-
-        let mut url_path = String::new();
-        if let Some(service) = service_type_pattern {
-            service_type = service;
-        }
-        if let Some(url) = url_pattern {
-            url_path = url;
-        }
-
-        // Update the control URL
-        control_url = build_control_url(&control_url, &url_path)?;
-        */
-
-        let control_url = String::new();
-        let service_type = String::new();
-
+        println!("Control Url: {}", url.to_string());
+        println!("Service Type: {}", service_type);
 
         //Ok(self_)
         Ok(Self {
             address,
-            control_url,
+            control_url: url,
             service_type
         })
     }
 
+    pub fn get_external_ip(&self) -> IpAddr {
+        IpAddr::V4(Ipv4Addr::UNSPECIFIED)
+    }
+
     /*
-        public GateWay(byte[] data, Inet4Address address)throws Exception {
-            this.address = address;
-
-            String response = new String(data).trim();
-            Pattern pattern = Pattern.compile("Location:(?: |)(.*?)$", Pattern.DOTALL | Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
-
-            Matcher matcher = pattern.matcher(response);
-            while(matcher.find()){
-                controlUrl = matcher.group(1);
-            }
-
-            pattern = Pattern.compile("(<controlURL>|<serviceType>)(.*?)(?:<\\/controlURL>|<\\/serviceType>)", Pattern.DOTALL | Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
-            HttpURLConnection conn = (HttpURLConnection) new URL(controlUrl).openConnection();
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("Content-Type", "text/xml");
-
-            byte[] buffer = new byte[8192];
-            int length = conn.getInputStream().read(buffer);
-            response = new String(buffer, 0, length);
-            conn.disconnect();
-
-            matcher = pattern.matcher(response);
-            String urlPath = "";
-            while(matcher.find()){
-                if(matcher.group(1).equals("<serviceType>")){
-                    serviceType = matcher.group(2);
-                }else{
-                    urlPath = matcher.group(2);
-                }
-            }
-
-            try{
-                URL url = new URL(controlUrl);
-                controlUrl = url.getProtocol()+"://"+url.getHost()+":"+url.getPort()+urlPath;
-            }catch(Exception e){
-                throw new Exception("Couldn't parse url.");
-            }
-        }
 
         private HashMap<String, String> command(String action, Map<String, String> params)throws Exception {
             HashMap<String, String> ret = new HashMap<>();

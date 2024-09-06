@@ -61,8 +61,8 @@ impl UPnP {
         //self.gateway.close_port(port, true)
     }
 
-    pub fn get_external_ip(&self) {
-        //self.gateway.get_external_ip()
+    pub fn get_external_ip(&self) -> IpAddr {
+        self.gateway.as_ref().unwrap().get_external_ip()
     }
 
     pub fn is_tcp_mapped(&self, port: u32) {
