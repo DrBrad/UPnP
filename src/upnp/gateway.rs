@@ -28,6 +28,7 @@ impl Gateway {
 
     pub fn new(buf: &[u8], size: usize, address: IpAddr) -> io::Result<Self> {
         let response = std::str::from_utf8(&buf[..size]).unwrap_or("[Invalid UTF-8]");
+        println!("{}", response);
 
         let mut lines = response.lines();
         lines.next();
@@ -42,7 +43,7 @@ impl Gateway {
             }
         }
 
-        let mut url = Url::new(headers.get("Location").unwrap());
+        let mut url = Url::new(headers.get("Location").or_else(|| headers.get("LOCATION")).unwrap());
 
         println!("Location: {}", url.to_string());
 
