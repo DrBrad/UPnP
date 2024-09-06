@@ -27,7 +27,6 @@ impl Gateway {
     pub fn new(buf: &[u8], size: usize, address: IpAddr) -> io::Result<Self> {
         let response = std::str::from_utf8(&buf[..size]).unwrap_or("[Invalid UTF-8]");
 
-
         let mut lines = response.lines();
         lines.next();
 
@@ -37,18 +36,15 @@ impl Gateway {
                 break;
             }
             if let Some((key, value)) = line.split_once(':') {
-                let key = key.trim();
-                let value = value.trim();
-                headers.insert(key.to_string(), value.to_string());
+                headers.insert(key.trim().to_string(), value.trim().to_string());
             }
         }
 
-        // Print extracted headers
-        //for (key, value) in &headers {
-        //    println!("{}: {}", key, value);
-        //}
-
         println!("{}", headers.get("Location").unwrap());
+
+
+
+
         /*
         let self_ = Self {
             address,
