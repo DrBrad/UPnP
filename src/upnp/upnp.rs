@@ -40,9 +40,36 @@ impl UPnP {
                     break;
                 }
             }
-
         }
 
         Err(io::Error::new(io::ErrorKind::Other, "Could not find gateway"))
+    }
+
+    pub fn open_tcp_port(&self, port: u32) {
+        //self.gateway.open_port(port, false)
+    }
+
+    pub fn close_tcp_port(&self, port: u32) {
+        //self.gateway.close_port(port, false)
+    }
+
+    pub fn open_udp_port(&self, port: u32) {
+        //self.gateway.open_port(port, true)
+    }
+
+    pub fn close_udp_port(&self, port: u32) {
+        //self.gateway.close_port(port, true)
+    }
+
+    pub fn get_external_ip(&self) {
+        //self.gateway.get_external_ip()
+    }
+
+    pub fn is_tcp_mapped(&self, port: u32) {
+        //self.gateway.is_mapped(port, false)
+    }
+
+    pub fn is_udp_mapped(&self, port: u32) {
+        //self.gateway.is_mapped(port, true)
     }
 }
