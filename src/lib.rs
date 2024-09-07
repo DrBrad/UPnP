@@ -12,5 +12,6 @@ mod tests {
     fn open_port() {
         //println!("TEST");
         let upnp = UPnP::new();
+        upnp.unwrap().get_external_ip();
     }
 }

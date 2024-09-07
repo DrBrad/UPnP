@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::format;
 use std::net::{IpAddr, Ipv4Addr, TcpStream};
 use std::io;
 use std::io::{Read, Write};
@@ -28,7 +29,7 @@ impl Gateway {
 
     pub fn new(buf: &[u8], size: usize, address: IpAddr) -> io::Result<Self> {
         let response = std::str::from_utf8(&buf[..size]).unwrap_or("[Invalid UTF-8]");
-        println!("{}", response);
+        //println!("{}", response);
 
         let mut lines = response.lines();
         lines.next();
@@ -62,12 +63,21 @@ impl Gateway {
 
         let response_str = String::from_utf8_lossy(&response);
 
-        //println!("Response:\n{}", response_str);
 
+        let device_list_start = response_str.find("<deviceList>").unwrap();
+        let device_list_content = &response_str[device_list_start..response_str[device_list_start..].rfind("</deviceList>").unwrap() + device_list_start];
 
+        let device_start = device_list_content.find("<device>").unwrap();
+        let device_content = &device_list_content[device_start..device_list_content[device_start..].rfind("</device>").unwrap() + device_start];
 
-        let service_list_start = response_str.find("<serviceList>").unwrap();
-        let service_list_content = &response_str[service_list_start..response_str[service_list_start..].find("</serviceList>").unwrap() + service_list_start];
+        let device_list_start = device_content.find("<deviceList>").unwrap();
+        let device_list_content = &device_content[device_list_start..device_content[device_list_start..].find("</deviceList>").unwrap() + device_list_start];
+
+        let device_start = device_list_content.find("<device>").unwrap();
+        let device_content = &device_list_content[device_start..device_list_content[device_start..].find("</device>").unwrap() + device_start];
+
+        let service_list_start = device_content.find("<serviceList>").unwrap();
+        let service_list_content = &device_content[service_list_start..device_content[service_list_start..].find("</serviceList>").unwrap() + service_list_start];
 
         let service_start = service_list_content.find("<service>").unwrap();
         let service_content = &service_list_content[service_start..service_list_content[service_start..].find("</service>").unwrap() + service_start];
@@ -79,11 +89,9 @@ impl Gateway {
         let service_type_start = service_content.find("<serviceType>").unwrap() + "<serviceType>".len();
         let service_type = service_content[service_type_start..service_content[service_type_start..].find("</serviceType>").unwrap() + service_type_start].to_string();
 
-
         println!("Control Url: {}", url.to_string());
         println!("Service Type: {}", service_type);
 
-        //Ok(self_)
         Ok(Self {
             address,
             control_url: url,
@@ -92,47 +100,57 @@ impl Gateway {
     }
 
     pub fn get_external_ip(&self) -> IpAddr {
+        let response = self.command("GetExternalIPAddress", None);
+        //response.get("NewExternalIPAddress")
         IpAddr::V4(Ipv4Addr::UNSPECIFIED)
     }
 
-    fn command(&self, action: String, params: HashMap<String, String>) -> io::Result<HashMap<String, String>> {
-        let response = HashMap::new();
-
-        let soap = format!("<?xml version=\"1.0\"?>\r\n\
+    fn command(&self, action: &str, params: Option<HashMap<String, String>>) -> io::Result<HashMap<String, String>> {
+        let mut soap = format!("<?xml version=\"1.0\"?>\r\n\
             <SOAP-ENV:Envelope xmlns:SOAP-ENV=\"http://schemas.xmlsoap.org/soap/envelope/\" SOAP-ENV:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">\
             <SOAP-ENV:Body>\
             <m:{} xmlns:m=\"{}\">", action, self.service_type);
 
-        if !params.is_empty() {
-            //return Err(io::Error::new(io::ErrorKind::Other, "Params is empty"));
+        match params {
+            Some(params) => {
+                if !params.is_empty() {
+                    for (key, value) in params {
+                        soap.push_str(format!("<m{}>{}</m{}>", key, value, key).as_str());
+                    }
+                }
+            }
+            None => {}
         }
+
+        soap.push_str(format!("</m:{}></SOAP-ENV:Body></SOAP-ENV:Envelope>", action).as_str());
+
+
+
+        let mut stream = TcpStream::connect((self.control_url.host.clone(), self.control_url.port.clone())).unwrap();
+
+        let request = format!("POST {} HTTP/1.1\r\n\
+                   Host: {}\r\n\
+                   Content-Type: text/xml\r\n\
+                   SOAPAction: \"{}#{}\"\r\n\
+                   Content-Length: {}\r\n\r\n", self.control_url.path.clone(), self.control_url.host.clone(), self.service_type, action, soap.as_bytes().len());
+        //println!("{}", request);
+        //println!("{}", soap);
+        stream.write_all(request.as_bytes()).unwrap();
+        stream.write_all(soap.as_bytes()).unwrap();
+
+        let mut response = Vec::new();
+        let mut reader = io::BufReader::new(stream);
+        reader.read_to_end(&mut response).unwrap();
+
+        let response_str = String::from_utf8_lossy(&response);
+        //println!("Response:\n{}", response_str);
+
+        let response = HashMap::new();
 
 
 
         Ok(response)
         /*
-        HashMap<String, String> ret = new HashMap<>();
-        String soap = "<?xml version=\"1.0\"?>\r\n" +
-            "<SOAP-ENV:Envelope xmlns:SOAP-ENV=\"http://schemas.xmlsoap.org/soap/envelope/\" SOAP-ENV:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">" +
-            "<SOAP-ENV:Body>" +
-            "<m:"+action+" xmlns:m=\""+serviceType+"\">";
-
-        if(params != null){
-            for(Map.Entry<String, String> entry : params.entrySet()){
-                soap += "<"+entry.getKey()+">"+entry.getValue()+"</" + entry.getKey()+">";
-            }
-        }
-        soap += "</m:"+action+"></SOAP-ENV:Body></SOAP-ENV:Envelope>";
-        byte[] req = soap.getBytes();
-        HttpURLConnection conn = (HttpURLConnection) new URL(controlUrl).openConnection();
-        conn.setRequestMethod("POST");
-        conn.setDoOutput(true);
-        conn.setRequestProperty("Content-Type", "text/xml");
-        conn.setRequestProperty("SOAPAction", "\""+serviceType+"#"+action+"\"");
-        conn.setRequestProperty("Connection", "Close");
-        conn.setRequestProperty("Content-Length", ""+req.length);
-        conn.getOutputStream().write(req);
-
         Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(conn.getInputStream());
         NodeIterator iterator = ((DocumentTraversal) document).createNodeIterator(document.getDocumentElement(), NodeFilter.SHOW_ELEMENT, null, true);
         Node node;
@@ -207,15 +225,6 @@ impl Gateway {
                 return ret.get("NewInternalPort") != null;
             }catch(Exception e){
                 return false;
-            }
-        }
-
-        public String getExternalIP(){
-            try{
-                HashMap<String, String> ret = command("GetExternalIPAddress", null);
-                return ret.get("NewExternalIPAddress");
-            }catch(Exception e){
-                return null;
             }
         }
     }
