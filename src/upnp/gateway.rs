@@ -99,6 +99,90 @@ impl Gateway {
         })
     }
 
+    pub fn open_port(&self, port: u16) {
+        if port > 65535 {
+
+        }
+
+        let mut params = HashMap::new();
+        params.insert("NewRemoteHost".to_string(), "".to_string());
+        params.insert("NewProtocol".to_string(), "TCP".to_string());
+        params.insert("NewInternalClient".to_string(), self.address.to_string());
+        params.insert("NewExternalPort".to_string(), port.to_string());
+        params.insert("NewInternalPort".to_string(), port.to_string());
+        params.insert("NewEnabled".to_string(), "1".to_string());
+        params.insert("NewPortMappingDescription".to_string(), "UPnP".to_string());
+        params.insert("NewLeaseDuration".to_string(), "0".to_string());
+
+        let response = self.command("GetSpecificPortMappingEntry", Some(params));
+
+        /*
+        if(port < 0 || port > 65535){
+            throw new IllegalArgumentException("Invalid port");
+        }
+        HashMap<String, String> params = new HashMap<>();
+        params.put("NewRemoteHost", "");
+        params.put("NewProtocol", udp ? "UDP" : "TCP");
+        params.put("NewInternalClient", address.getHostAddress());
+        params.put("NewExternalPort", port+"");
+        params.put("NewInternalPort", port+"");
+        params.put("NewEnabled", "1");
+        params.put("NewPortMappingDescription", "UNet");
+        params.put("NewLeaseDuration", "0");
+        try{
+            HashMap<String, String> ret = command("AddPortMapping", params);
+            return ret.get("errorCode") == null;
+        }catch(Exception e){
+            return false;
+        }
+        */
+    }
+
+    pub fn close_port(&self, port: u16) {
+        /*
+        if(port < 0 || port > 65535){
+            throw new IllegalArgumentException("Invalid port");
+        }
+        HashMap<String, String> params = new HashMap<>();
+        params.put("NewRemoteHost", "");
+        params.put("NewProtocol", udp ? "UDP" : "TCP");
+        params.put("NewExternalPort", ""+port);
+        try{
+            command("DeletePortMapping", params);
+            return true;
+        }catch(Exception e){
+            return false;
+        }
+        */
+    }
+
+    pub fn is_mapped(&self, port: u16) {
+        if port > 65535 {
+
+        }
+
+        let mut params = HashMap::new();
+        params.insert("NewRemoteHost".to_string(), "".to_string());
+        params.insert("NewProtocol".to_string(), "TCP".to_string());
+        params.insert("NewExternalPort".to_string(), port.to_string());
+
+        let response = self.command("GetSpecificPortMappingEntry", Some(params));
+        /*
+        if(port < 0 || port > 65535){
+            throw new IllegalArgumentException("Invalid port");
+        }
+        try{
+            HashMap<String, String> ret = command("GetSpecificPortMappingEntry", params);
+            if(ret.get("errorCode") != null){
+                throw new Exception();
+            }
+            return ret.get("NewInternalPort") != null;
+        }catch(Exception e){
+            return false;
+        }
+        */
+    }
+
     pub fn get_external_ip(&self) -> IpAddr {
         let response = self.command("GetExternalIPAddress", None);
         //response.get("NewExternalIPAddress")
@@ -134,7 +218,7 @@ impl Gateway {
                    SOAPAction: \"{}#{}\"\r\n\
                    Content-Length: {}\r\n\r\n", self.control_url.path.clone(), self.control_url.host.clone(), self.service_type, action, soap.as_bytes().len());
         //println!("{}", request);
-        //println!("{}", soap);
+        println!("{}", soap);
         stream.write_all(request.as_bytes()).unwrap();
         stream.write_all(soap.as_bytes()).unwrap();
 
@@ -143,7 +227,7 @@ impl Gateway {
         reader.read_to_end(&mut response).unwrap();
 
         let response_str = String::from_utf8_lossy(&response);
-        //println!("Response:\n{}", response_str);
+        println!("Response:\n{}", response_str);
 
         let response = HashMap::new();
 
@@ -167,66 +251,4 @@ impl Gateway {
         return ret;
         */
     }
-    /*
-
-        private HashMap<String, String> command(String action, Map<String, String> params)throws Exception {
-        }
-
-        public boolean openPort(int port, boolean udp){
-            if(port < 0 || port > 65535){
-                throw new IllegalArgumentException("Invalid port");
-            }
-            HashMap<String, String> params = new HashMap<>();
-            params.put("NewRemoteHost", "");
-            params.put("NewProtocol", udp ? "UDP" : "TCP");
-            params.put("NewInternalClient", address.getHostAddress());
-            params.put("NewExternalPort", port+"");
-            params.put("NewInternalPort", port+"");
-            params.put("NewEnabled", "1");
-            params.put("NewPortMappingDescription", "UNet");
-            params.put("NewLeaseDuration", "0");
-            try{
-                HashMap<String, String> ret = command("AddPortMapping", params);
-                return ret.get("errorCode") == null;
-            }catch(Exception e){
-                return false;
-            }
-        }
-
-        public boolean closePort(int port, boolean udp){
-            if(port < 0 || port > 65535){
-                throw new IllegalArgumentException("Invalid port");
-            }
-            HashMap<String, String> params = new HashMap<>();
-            params.put("NewRemoteHost", "");
-            params.put("NewProtocol", udp ? "UDP" : "TCP");
-            params.put("NewExternalPort", ""+port);
-            try{
-                command("DeletePortMapping", params);
-                return true;
-            }catch(Exception e){
-                return false;
-            }
-        }
-
-        public boolean isMapped(int port, boolean udp){
-            if(port < 0 || port > 65535){
-                throw new IllegalArgumentException("Invalid port");
-            }
-            HashMap<String, String> params = new HashMap<>();
-            params.put("NewRemoteHost", "");
-            params.put("NewProtocol", udp ? "UDP" : "TCP");
-            params.put("NewExternalPort", ""+port);
-            try{
-                HashMap<String, String> ret = command("GetSpecificPortMappingEntry", params);
-                if(ret.get("errorCode") != null){
-                    throw new Exception();
-                }
-                return ret.get("NewInternalPort") != null;
-            }catch(Exception e){
-                return false;
-            }
-        }
-    }
-    */
 }

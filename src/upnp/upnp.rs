@@ -46,19 +46,19 @@ impl UPnP {
     }
 
     pub fn open_tcp_port(&self, port: u16) {
-        //self.gateway.open_port(port, false)
+        self.gateway.as_ref().unwrap().open_port(port)
     }
 
     pub fn close_tcp_port(&self, port: u16) {
-        //self.gateway.close_port(port, false)
+        //self.gateway.as_ref().unwrap().close_port(port, false)
     }
 
     pub fn open_udp_port(&self, port: u16) {
-        //self.gateway.open_port(port, true)
+        self.gateway.as_ref().unwrap().open_port(port)
     }
 
     pub fn close_udp_port(&self, port: u16) {
-        //self.gateway.close_port(port, true)
+        //self.gateway.as_ref().unwrap().close_port(port, true)
     }
 
     pub fn get_external_ip(&self) -> IpAddr {
@@ -66,10 +66,10 @@ impl UPnP {
     }
 
     pub fn is_tcp_mapped(&self, port: u16) {
-        //self.gateway.is_mapped(port, false)
+        self.gateway.as_ref().unwrap().is_mapped(port)
     }
 
     pub fn is_udp_mapped(&self, port: u16) {
-        //self.gateway.is_mapped(port, true)
+        self.gateway.as_ref().unwrap().is_mapped(port)
     }
 }
