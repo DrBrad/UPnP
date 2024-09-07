@@ -3,6 +3,7 @@ use std::fmt::format;
 use std::net::{IpAddr, Ipv4Addr, TcpStream};
 use std::io;
 use std::io::{Read, Write};
+//use crate::utils::ordered_map::OrderedMap;
 use crate::utils::url::Url;
 
 pub struct Gateway {
@@ -114,7 +115,7 @@ impl Gateway {
         params.insert("NewPortMappingDescription".to_string(), "UPnP".to_string());
         params.insert("NewLeaseDuration".to_string(), "0".to_string());
 
-        let response = self.command("GetSpecificPortMappingEntry", Some(params));
+        let response = self.command("AddPortMapping", Some(params));
 
         /*
         if(port < 0 || port > 65535){
@@ -162,9 +163,9 @@ impl Gateway {
         }
 
         let mut params = HashMap::new();
-        params.insert("NewRemoteHost".to_string(), "".to_string());
         params.insert("NewProtocol".to_string(), "TCP".to_string());
         params.insert("NewExternalPort".to_string(), port.to_string());
+        params.insert("NewRemoteHost".to_string(), "".to_string());
 
         let response = self.command("GetSpecificPortMappingEntry", Some(params));
         /*
@@ -198,7 +199,7 @@ impl Gateway {
         match params {
             Some(params) => {
                 if !params.is_empty() {
-                    for (key, value) in params {
+                    for (key, value) in params.iter() {
                         soap.push_str(format!("<m{}>{}</m{}>", key, value, key).as_str());
                     }
                 }
@@ -217,7 +218,7 @@ impl Gateway {
                    Content-Type: text/xml\r\n\
                    SOAPAction: \"{}#{}\"\r\n\
                    Content-Length: {}\r\n\r\n", self.control_url.path.clone(), self.control_url.host.clone(), self.service_type, action, soap.as_bytes().len());
-        //println!("{}", request);
+        println!("{}", request);
         println!("{}", soap);
         stream.write_all(request.as_bytes()).unwrap();
         stream.write_all(soap.as_bytes()).unwrap();
