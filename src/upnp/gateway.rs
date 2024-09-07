@@ -16,7 +16,6 @@ impl Gateway {
 
     pub fn new(buf: &[u8], size: usize, address: IpAddr) -> io::Result<Self> {
         let response = std::str::from_utf8(&buf[..size]).unwrap_or("[Invalid UTF-8]");
-        //println!("{}", response);
 
         let mut lines = response.lines();
         lines.next();
@@ -47,31 +46,18 @@ impl Gateway {
 
         let response_str = String::from_utf8_lossy(&response);
 
+        let doc = roxmltree::Document::parse(response_str.split("\r\n\r\n").last().unwrap())
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
 
-        let device_list_start = response_str.find("<deviceList>").unwrap() + "<deviceList>".len();
-        let device_list_content = &response_str[device_list_start..response_str[device_list_start..].rfind("</deviceList>").unwrap() + device_list_start];
+        let root = doc.root_element().descendants().find(|node| node.tag_name().name() == "deviceList").unwrap()
+            .descendants().find(|node| node.tag_name().name() == "device").unwrap()
+            .descendants().find(|node| node.tag_name().name() == "deviceList").unwrap()
+            .descendants().find(|node| node.tag_name().name() == "device").unwrap()
+            .descendants().find(|node| node.tag_name().name() == "serviceList").unwrap()
+            .descendants().find(|node| node.tag_name().name() == "service").unwrap();
 
-        let device_start = device_list_content.find("<device>").unwrap() + "<device>".len();
-        let device_content = &device_list_content[device_start..device_list_content[device_start..].rfind("</device>").unwrap() + device_start];
-
-        let device_list_start = device_content.find("<deviceList>").unwrap() + "<deviceList>".len();
-        let device_list_content = &device_content[device_list_start..device_content[device_list_start..].find("</deviceList>").unwrap() + device_list_start];
-
-        let device_start = device_list_content.find("<device>").unwrap() + "<device>".len();
-        let device_content = &device_list_content[device_start..device_list_content[device_start..].find("</device>").unwrap() + device_start];
-
-        let service_list_start = device_content.find("<serviceList>").unwrap() + "<serviceList>".len();
-        let service_list_content = &device_content[service_list_start..device_content[service_list_start..].find("</serviceList>").unwrap() + service_list_start];
-
-        let service_start = service_list_content.find("<service>").unwrap() + "<service>".len();
-        let service_content = &service_list_content[service_start..service_list_content[service_start..].find("</service>").unwrap() + service_start];
-
-        let control_url_start = service_content.find("<controlURL>").unwrap() + "<controlURL>".len();
-        let control_url = service_content[control_url_start..service_content[control_url_start..].find("</controlURL>").unwrap() + control_url_start].to_string();
-        url.path = control_url;
-
-        let service_type_start = service_content.find("<serviceType>").unwrap() + "<serviceType>".len();
-        let service_type = service_content[service_type_start..service_content[service_type_start..].find("</serviceType>").unwrap() + service_type_start].to_string();
+        url.path = root.descendants().find(|node| node.tag_name().name() == "controlURL").unwrap().text().unwrap().to_string();
+        let service_type = root.descendants().find(|node| node.tag_name().name() == "serviceType").unwrap().text().unwrap().to_string();
 
         Ok(Self {
             address,
@@ -193,44 +179,32 @@ impl Gateway {
 
         let response_str = String::from_utf8_lossy(&response);
 
-        let response_key = format!("u:{}Response", action);
+        let doc = roxmltree::Document::parse(response_str.split("\r\n\r\n").last().unwrap())
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
 
-        if !response_str.contains(&response_key) {
-            let error_start = response_str.find("<UPnPError").unwrap() + "<UPnPError".len();
-            let error_content = &response_str[error_start..response_str[error_start..].rfind("</UPnPError>").unwrap() + error_start];
+        if let Some(root) = doc.root_element().descendants().find(|node| node.tag_name().name() == "Body").unwrap()
+                .descendants().find(|node| node.tag_name().name() == format!("{}Response", action)) {
+            let mut response = HashMap::new();
 
+            let mut iter = root.descendants();
+            iter.next();
+            while let Some(node) = &iter.next() {
+                if node.is_element() {
+                    let key = node.tag_name().name().to_string();
+                    if let Some(node) = iter.next() {
+                        if node.is_text() {
+                            response.insert(key, node.text().unwrap().to_string());
+                        }
+                    }
+                }
+            }
 
-            let error_start = error_content.find("<errorCode>").unwrap() + "<errorCode>".len();
-            let error_code = &error_content[error_start..error_content[error_start..].rfind("</errorCode>").unwrap() + error_start];
-
-            let error_start = error_content.find("<errorDescription>").unwrap() + "<errorDescription>".len();
-            let error_description = &error_content[error_start..error_content[error_start..].rfind("</errorDescription>").unwrap() + error_start];
-
-            return Err(io::Error::new(io::ErrorKind::Other, format!("{}: {}", error_code, error_description)));
-        }
-
-
-        let mut response = HashMap::new();
-        let body_size = response_str.find(&format!("<{}", &response_key)).unwrap()+1+response_key.len();
-
-        if !response_str.contains(&format!("</{}>", &response_key)) {
             return Ok(response);
         }
 
-        let body_content = &response_str[body_size..response_str[body_size..].rfind(&format!("</{}>", response_key)).unwrap() + body_size];//.trim().replace("\n", "").replace("\t", "");
+        let error_code = doc.descendants().find(|node| node.tag_name().name() == "errorCode").unwrap().text().unwrap();
+        let error_description = doc.descendants().find(|node| node.tag_name().name() == "errorDescription").unwrap().text().unwrap();
 
-        let mut tokens = body_content.split('<').filter(|s| !s.trim().is_empty());
-        tokens.next();
-
-        while let Some(token) = tokens.next() {
-            if let Some(pos) = token.find('>') {
-                let tag = &token[..pos].trim();
-
-                response.insert(tag.to_string(), token[tag.len()+1..].to_string());
-                tokens.next();
-            }
-        }
-
-        Ok(response)
+        Err(io::Error::new(io::ErrorKind::Other, format!("{}: {}", error_code, error_description)))
     }
 }
