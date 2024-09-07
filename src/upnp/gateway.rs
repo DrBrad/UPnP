@@ -1,9 +1,9 @@
 use std::collections::HashMap;
-use std::fmt::format;
-use std::net::{IpAddr, Ipv4Addr, TcpStream};
+use std::net::{IpAddr, TcpStream};
 use std::io;
 use std::io::{Read, Write};
-//use crate::utils::ordered_map::OrderedMap;
+use std::str::FromStr;
+use crate::upnp::protocol::Protocol;
 use crate::utils::url::Url;
 
 pub struct Gateway {
@@ -25,7 +25,6 @@ impl Default for Gateway {
 }
 */
 
-
 impl Gateway {
 
     pub fn new(buf: &[u8], size: usize, address: IpAddr) -> io::Result<Self> {
@@ -46,9 +45,6 @@ impl Gateway {
         }
 
         let mut url = Url::new(headers.get("Location").or_else(|| headers.get("LOCATION")).unwrap());
-
-        println!("Location: {}", url.to_string());
-
 
 
         let mut stream = TcpStream::connect((url.host.clone(), url.port.clone())).unwrap();
@@ -90,9 +86,6 @@ impl Gateway {
         let service_type_start = service_content.find("<serviceType>").unwrap() + "<serviceType>".len();
         let service_type = service_content[service_type_start..service_content[service_type_start..].find("</serviceType>").unwrap() + service_type_start].to_string();
 
-        println!("Control Url: {}", url.to_string());
-        println!("Service Type: {}", service_type);
-
         Ok(Self {
             address,
             control_url: url,
@@ -100,14 +93,14 @@ impl Gateway {
         })
     }
 
-    pub fn open_port(&self, port: u16) {
+    pub fn open_port(&self, port: u16, protocol: Protocol) -> io::Result<bool> {
         if port > 65535 {
-
+            return Err(io::Error::new(io::ErrorKind::Other, "Port is out of range."));
         }
 
         let mut params = HashMap::new();
         params.insert("NewRemoteHost".to_string(), "".to_string());
-        params.insert("NewProtocol".to_string(), "TCP".to_string());
+        params.insert("NewProtocol".to_string(), protocol.value().to_string());
         params.insert("NewInternalClient".to_string(), self.address.to_string());
         params.insert("NewExternalPort".to_string(), port.to_string());
         params.insert("NewInternalPort".to_string(), port.to_string());
@@ -115,79 +108,44 @@ impl Gateway {
         params.insert("NewPortMappingDescription".to_string(), "UPnP".to_string());
         params.insert("NewLeaseDuration".to_string(), "0".to_string());
 
-        let response = self.command("AddPortMapping", Some(params));
+        self.command("AddPortMapping", Some(params))?;
 
-        /*
-        try{
-            HashMap<String, String> ret = command("AddPortMapping", params);
-            return ret.get("errorCode") == null;
-        }catch(Exception e){
-            return false;
-        }
-        */
+        Ok(true)
     }
 
-    pub fn close_port(&self, port: u16) {
+    pub fn close_port(&self, port: u16, protocol: Protocol) -> io::Result<bool> {
         if port > 65535 {
-
+            return Err(io::Error::new(io::ErrorKind::Other, "Port is out of range."));
         }
 
         let mut params = HashMap::new();
         params.insert("NewRemoteHost".to_string(), "".to_string());
-        params.insert("NewProtocol".to_string(), "TCP".to_string());
+        params.insert("NewProtocol".to_string(), protocol.value().to_string());
         params.insert("NewExternalPort".to_string(), port.to_string());
 
-        let response = self.command("DeletePortMapping", Some(params));
-        /*
-        try{
-            command("DeletePortMapping", params);
-            return true;
-        }catch(Exception e){
-            return false;
-        }
-        */
+        self.command("DeletePortMapping", Some(params))?;
+
+        Ok(true)
     }
 
-    pub fn is_mapped(&self, port: u16) {
+    pub fn is_mapped(&self, port: u16, protocol: Protocol) -> io::Result<bool> {
         if port > 65535 {
-
+            return Err(io::Error::new(io::ErrorKind::Other, "Port is out of range."));
         }
 
         let mut params = HashMap::new();
         params.insert("NewRemoteHost".to_string(), "".to_string());
-        params.insert("NewProtocol".to_string(), "UDP".to_string());
+        params.insert("NewProtocol".to_string(), protocol.value().to_string());
         params.insert("NewExternalPort".to_string(), port.to_string());
 
-        let response = self.command("GetSpecificPortMappingEntry", Some(params));
+        let response = self.command("GetSpecificPortMappingEntry", Some(params))?;
 
-        match response {
-            Ok(map) => {
-                for (key, value) in map {
-                    println!("{} {}", key, value);
-                }
-            }
-            Err(e) => {
-                eprintln!("{}", e.to_string());
-            }
-        }
-
-        /*
-        try{
-            HashMap<String, String> ret = command("GetSpecificPortMappingEntry", params);
-            if(ret.get("errorCode") != null){
-                throw new Exception();
-            }
-            return ret.get("NewInternalPort") != null;
-        }catch(Exception e){
-            return false;
-        }
-        */
+        Ok(response.get("NewEnabled").unwrap() == "1")
     }
 
-    pub fn get_external_ip(&self) -> IpAddr {
-        let response = self.command("GetExternalIPAddress", None);
-        //response.get("NewExternalIPAddress")
-        IpAddr::V4(Ipv4Addr::UNSPECIFIED)
+    pub fn get_external_ip(&self) -> io::Result<IpAddr> {
+        let response = self.command("GetExternalIPAddress", None)?;
+        Ok(IpAddr::from_str(response.get("NewExternalIPAddress").unwrap()).unwrap())
     }
 
     fn command(&self, action: &str, params: Option<HashMap<String, String>>) -> io::Result<HashMap<String, String>> {
@@ -210,7 +168,6 @@ impl Gateway {
         soap.push_str(format!("</m:{}></SOAP-ENV:Body></SOAP-ENV:Envelope>", action).as_str());
 
 
-
         let mut stream = TcpStream::connect((self.control_url.host.clone(), self.control_url.port.clone())).unwrap();
 
         let request = format!("POST {} HTTP/1.1\r\n\
@@ -218,8 +175,7 @@ impl Gateway {
                    Content-Type: text/xml\r\n\
                    SOAPAction: \"{}#{}\"\r\n\
                    Content-Length: {}\r\n\r\n", self.control_url.path.clone(), self.control_url.host.clone(), self.service_type, action, soap.as_bytes().len());
-        //println!("{}", request);
-        //println!("{}", soap);
+
         stream.write_all(request.as_bytes()).unwrap();
         stream.write_all(soap.as_bytes()).unwrap();
 
@@ -228,9 +184,6 @@ impl Gateway {
         reader.read_to_end(&mut response).unwrap();
 
         let response_str = String::from_utf8_lossy(&response);
-        //println!("Response:\n{}", response_str);
-
-        //
 
         let response_key = format!("u:{}Response", action);
 
@@ -249,12 +202,14 @@ impl Gateway {
         }
 
 
-
         let mut response = HashMap::new();
-
-
         let body_size = response_str.find(&format!("<{}", &response_key)).unwrap()+1+response_key.len();
-        let body_content = &response_str[body_size..response_str[body_size..].rfind(&format!("</{}>", response_key)).unwrap() + body_size].trim().replace("\n", "").replace("\t", "");
+
+        if !response_str.contains(&format!("</{}>", &response_key)) {
+            return Ok(response);
+        }
+
+        let body_content = &response_str[body_size..response_str[body_size..].rfind(&format!("</{}>", response_key)).unwrap() + body_size];//.trim().replace("\n", "").replace("\t", "");
 
         let mut tokens = body_content.split('<').filter(|s| !s.trim().is_empty());
         tokens.next();
