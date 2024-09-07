@@ -118,18 +118,6 @@ impl Gateway {
         let response = self.command("AddPortMapping", Some(params));
 
         /*
-        if(port < 0 || port > 65535){
-            throw new IllegalArgumentException("Invalid port");
-        }
-        HashMap<String, String> params = new HashMap<>();
-        params.put("NewRemoteHost", "");
-        params.put("NewProtocol", udp ? "UDP" : "TCP");
-        params.put("NewInternalClient", address.getHostAddress());
-        params.put("NewExternalPort", port+"");
-        params.put("NewInternalPort", port+"");
-        params.put("NewEnabled", "1");
-        params.put("NewPortMappingDescription", "UNet");
-        params.put("NewLeaseDuration", "0");
         try{
             HashMap<String, String> ret = command("AddPortMapping", params);
             return ret.get("errorCode") == null;
@@ -140,14 +128,17 @@ impl Gateway {
     }
 
     pub fn close_port(&self, port: u16) {
-        /*
-        if(port < 0 || port > 65535){
-            throw new IllegalArgumentException("Invalid port");
+        if port > 65535 {
+
         }
-        HashMap<String, String> params = new HashMap<>();
-        params.put("NewRemoteHost", "");
-        params.put("NewProtocol", udp ? "UDP" : "TCP");
-        params.put("NewExternalPort", ""+port);
+
+        let mut params = HashMap::new();
+        params.insert("NewRemoteHost".to_string(), "".to_string());
+        params.insert("NewProtocol".to_string(), "TCP".to_string());
+        params.insert("NewExternalPort".to_string(), port.to_string());
+
+        let response = self.command("DeletePortMapping", Some(params));
+        /*
         try{
             command("DeletePortMapping", params);
             return true;
@@ -163,15 +154,12 @@ impl Gateway {
         }
 
         let mut params = HashMap::new();
+        params.insert("NewRemoteHost".to_string(), "".to_string());
         params.insert("NewProtocol".to_string(), "TCP".to_string());
         params.insert("NewExternalPort".to_string(), port.to_string());
-        params.insert("NewRemoteHost".to_string(), "".to_string());
 
         let response = self.command("GetSpecificPortMappingEntry", Some(params));
         /*
-        if(port < 0 || port > 65535){
-            throw new IllegalArgumentException("Invalid port");
-        }
         try{
             HashMap<String, String> ret = command("GetSpecificPortMappingEntry", params);
             if(ret.get("errorCode") != null){
@@ -200,7 +188,7 @@ impl Gateway {
             Some(params) => {
                 if !params.is_empty() {
                     for (key, value) in params.iter() {
-                        soap.push_str(format!("<m{}>{}</m{}>", key, value, key).as_str());
+                        soap.push_str(format!("<{}>{}</m{}>", key, value, key).as_str());
                     }
                 }
             }
