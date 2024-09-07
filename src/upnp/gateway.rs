@@ -257,6 +257,7 @@ impl Gateway {
         let body_content = &response_str[body_size..response_str[body_size..].rfind(&format!("</{}>", response_key)).unwrap() + body_size].trim().replace("\n", "").replace("\t", "");
 
         let mut tokens = body_content.split('<').filter(|s| !s.trim().is_empty());
+        tokens.next();
 
         while let Some(token) = tokens.next() {
             if let Some(pos) = token.find('>') {
