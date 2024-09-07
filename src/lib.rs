@@ -14,6 +14,6 @@ mod tests {
         let upnp = UPnP::new().unwrap();
         //upnp.open_tcp_port(3030);
         //upnp.get_external_ip();
-        upnp.is_tcp_mapped(3030);
+        upnp.is_tcp_mapped(27017);
     }
 }

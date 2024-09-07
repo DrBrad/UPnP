@@ -65,22 +65,22 @@ impl Gateway {
         let response_str = String::from_utf8_lossy(&response);
 
 
-        let device_list_start = response_str.find("<deviceList>").unwrap();
+        let device_list_start = response_str.find("<deviceList>").unwrap() + "<deviceList>".len();
         let device_list_content = &response_str[device_list_start..response_str[device_list_start..].rfind("</deviceList>").unwrap() + device_list_start];
 
-        let device_start = device_list_content.find("<device>").unwrap();
+        let device_start = device_list_content.find("<device>").unwrap() + "<device>".len();
         let device_content = &device_list_content[device_start..device_list_content[device_start..].rfind("</device>").unwrap() + device_start];
 
-        let device_list_start = device_content.find("<deviceList>").unwrap();
+        let device_list_start = device_content.find("<deviceList>").unwrap() + "<deviceList>".len();
         let device_list_content = &device_content[device_list_start..device_content[device_list_start..].find("</deviceList>").unwrap() + device_list_start];
 
-        let device_start = device_list_content.find("<device>").unwrap();
+        let device_start = device_list_content.find("<device>").unwrap() + "<device>".len();
         let device_content = &device_list_content[device_start..device_list_content[device_start..].find("</device>").unwrap() + device_start];
 
-        let service_list_start = device_content.find("<serviceList>").unwrap();
+        let service_list_start = device_content.find("<serviceList>").unwrap() + "<serviceList>".len();
         let service_list_content = &device_content[service_list_start..device_content[service_list_start..].find("</serviceList>").unwrap() + service_list_start];
 
-        let service_start = service_list_content.find("<service>").unwrap();
+        let service_start = service_list_content.find("<service>").unwrap() + "<service>".len();
         let service_content = &service_list_content[service_start..service_list_content[service_start..].find("</service>").unwrap() + service_start];
 
         let control_url_start = service_content.find("<controlURL>").unwrap() + "<controlURL>".len();
@@ -155,10 +155,18 @@ impl Gateway {
 
         let mut params = HashMap::new();
         params.insert("NewRemoteHost".to_string(), "".to_string());
-        params.insert("NewProtocol".to_string(), "TCP".to_string());
+        params.insert("NewProtocol".to_string(), "UDP".to_string());
         params.insert("NewExternalPort".to_string(), port.to_string());
 
         let response = self.command("GetSpecificPortMappingEntry", Some(params));
+
+        match response {
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("{}", e.to_string());
+            }
+        }
+
         /*
         try{
             HashMap<String, String> ret = command("GetSpecificPortMappingEntry", params);
@@ -206,8 +214,8 @@ impl Gateway {
                    Content-Type: text/xml\r\n\
                    SOAPAction: \"{}#{}\"\r\n\
                    Content-Length: {}\r\n\r\n", self.control_url.path.clone(), self.control_url.host.clone(), self.service_type, action, soap.as_bytes().len());
-        println!("{}", request);
-        println!("{}", soap);
+        //println!("{}", request);
+        //println!("{}", soap);
         stream.write_all(request.as_bytes()).unwrap();
         stream.write_all(soap.as_bytes()).unwrap();
 
@@ -216,11 +224,36 @@ impl Gateway {
         reader.read_to_end(&mut response).unwrap();
 
         let response_str = String::from_utf8_lossy(&response);
-        println!("Response:\n{}", response_str);
+        //println!("Response:\n{}", response_str);
+
+        //
+
+        let response_key = format!("u:{}Response", action);
+
+        if !response_str.contains(&response_key) {
+            let error_start = response_str.find("<UPnPError").unwrap() + "<UPnPError".len();
+            let error_content = &response_str[error_start..response_str[error_start..].rfind("</UPnPError>").unwrap() + error_start];
+
+
+            let error_start = error_content.find("<errorCode>").unwrap() + "<errorCode>".len();
+            let error_code = &error_content[error_start..error_content[error_start..].rfind("</errorCode>").unwrap() + error_start];
+
+            let error_start = error_content.find("<errorDescription>").unwrap() + "<errorDescription>".len();
+            let error_description = &error_content[error_start..error_content[error_start..].rfind("</errorDescription>").unwrap() + error_start];
+
+            return Err(io::Error::new(io::ErrorKind::Other, format!("{}: {}", error_code, error_description)));
+        }
+
+
 
         let response = HashMap::new();
 
 
+        let body_size = response_str.find(&format!("<{}", &response_key)).unwrap()+1+response_key.len();
+        let body_content = &response_str[body_size..response_str[body_size..].rfind(&format!("</{}>", response_key)).unwrap() + body_size];
+
+
+        println!("{}", body_content);
 
         Ok(response)
         /*
