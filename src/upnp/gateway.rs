@@ -12,19 +12,6 @@ pub struct Gateway {
     service_type: String
 }
 
-/*
-impl Default for Gateway {
-
-    fn default() -> Self {
-        Self {
-            address: Ipv4Addr::UNSPECIFIED,
-            control_url: String::new(),
-            service_type: String::new()
-        }
-    }
-}
-*/
-
 impl Gateway {
 
     pub fn new(buf: &[u8], size: usize, address: IpAddr) -> io::Result<Self> {
@@ -108,9 +95,16 @@ impl Gateway {
         params.insert("NewPortMappingDescription".to_string(), "UPnP".to_string());
         params.insert("NewLeaseDuration".to_string(), "0".to_string());
 
-        self.command("AddPortMapping", Some(params))?;
+        let response = self.command("AddPortMapping", Some(params));
 
-        Ok(true)
+        match response {
+            Ok(_) => {
+                Ok(true)
+            }
+            Err(_) => {
+                Ok(false)
+            }
+        }
     }
 
     pub fn close_port(&self, port: u16, protocol: Protocol) -> io::Result<bool> {
@@ -123,9 +117,16 @@ impl Gateway {
         params.insert("NewProtocol".to_string(), protocol.value().to_string());
         params.insert("NewExternalPort".to_string(), port.to_string());
 
-        self.command("DeletePortMapping", Some(params))?;
+        let response = self.command("DeletePortMapping", Some(params));
 
-        Ok(true)
+        match response {
+            Ok(_) => {
+                Ok(true)
+            }
+            Err(_) => {
+                Ok(false)
+            }
+        }
     }
 
     pub fn is_mapped(&self, port: u16, protocol: Protocol) -> io::Result<bool> {
@@ -138,9 +139,16 @@ impl Gateway {
         params.insert("NewProtocol".to_string(), protocol.value().to_string());
         params.insert("NewExternalPort".to_string(), port.to_string());
 
-        let response = self.command("GetSpecificPortMappingEntry", Some(params))?;
+        let response = self.command("GetSpecificPortMappingEntry", Some(params));
 
-        Ok(response.get("NewEnabled").unwrap() == "1")
+        match response {
+            Ok(map) => {
+                Ok(map.get("NewEnabled").unwrap() == "1")
+            }
+            Err(_) => {
+                Ok(false)
+            }
+        }
     }
 
     pub fn get_external_ip(&self) -> io::Result<IpAddr> {

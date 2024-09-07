@@ -3,25 +3,17 @@ mod utils;
 
 #[cfg(test)]
 mod tests {
-    use std::io;
-    use std::io::{Read, Write};
-    use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream, UdpSocket};
-    use crate::upnp::protocol::Protocol::Udp;
+
+    use std::net::IpAddr;
+    use crate::upnp::protocol::Protocol::Tcp;
     use crate::upnp::upnp::UPnP;
 
     #[test]
-    fn is_mapped() {
-        //println!("TEST");
-        let upnp = UPnP::new(IpAddr::from([192, 168, 0, 129])).unwrap();
-        //upnp.open_tcp_port(3030);
-        //upnp.close_tcp_port(3030);
-        println!("{} IP", upnp.get_external_ip().unwrap().to_string());
-        println!("{:?} OPEN", upnp.is_mapped(27017, Udp).unwrap());
+    fn external_ip() {
+        let upnp = UPnP::new(IpAddr::from([192, 168, 0, 129])).expect("Cannot find gateway");
+        println!("{}", upnp.get_external_ip().unwrap().to_string());
+        println!("OPEN: {:?}", upnp.open_port(4040, Tcp).unwrap());
+        println!("MAPPED: {:?}", upnp.is_mapped(4040, Tcp).unwrap());
+        println!("CLOSE: {:?}", upnp.close_port(4040, Tcp).unwrap());
     }
-
-    #[test]
-    fn open_port() {
-
-    }
-
 }

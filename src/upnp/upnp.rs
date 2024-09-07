@@ -16,7 +16,6 @@ pub struct UPnP {
 impl UPnP {
 
     pub fn new(local_addr: IpAddr) -> io::Result<Self> {
-        //let local = SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0));
         let local = SocketAddr::new(local_addr, 0);
         let socket = UdpSocket::bind(local)?;
 
