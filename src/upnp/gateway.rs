@@ -161,7 +161,11 @@ impl Gateway {
         let response = self.command("GetSpecificPortMappingEntry", Some(params));
 
         match response {
-            Ok(_) => {}
+            Ok(map) => {
+                for (key, value) in map {
+                    println!("{} {}", key, value);
+                }
+            }
             Err(e) => {
                 eprintln!("{}", e.to_string());
             }
@@ -246,31 +250,23 @@ impl Gateway {
 
 
 
-        let response = HashMap::new();
+        let mut response = HashMap::new();
 
 
         let body_size = response_str.find(&format!("<{}", &response_key)).unwrap()+1+response_key.len();
-        let body_content = &response_str[body_size..response_str[body_size..].rfind(&format!("</{}>", response_key)).unwrap() + body_size];
+        let body_content = &response_str[body_size..response_str[body_size..].rfind(&format!("</{}>", response_key)).unwrap() + body_size].trim().replace("\n", "").replace("\t", "");
 
+        let mut tokens = body_content.split('<').filter(|s| !s.trim().is_empty());
 
-        println!("{}", body_content);
+        while let Some(token) = tokens.next() {
+            if let Some(pos) = token.find('>') {
+                let tag = &token[..pos].trim();
 
-        Ok(response)
-        /*
-        Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(conn.getInputStream());
-        NodeIterator iterator = ((DocumentTraversal) document).createNodeIterator(document.getDocumentElement(), NodeFilter.SHOW_ELEMENT, null, true);
-        Node node;
-        while((node = iterator.nextNode()) != null){
-            try{
-                if(node.getFirstChild().getNodeType() == Node.TEXT_NODE){
-                    ret.put(node.getNodeName(), node.getTextContent());
-                }
-            }catch(Exception e){
-                e.printStackTrace();
+                response.insert(tag.to_string(), token[tag.len()+1..].to_string());
+                tokens.next();
             }
         }
-        conn.disconnect();
-        return ret;
-        */
+
+        Ok(response)
     }
 }
