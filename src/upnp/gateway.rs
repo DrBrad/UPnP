@@ -67,10 +67,6 @@ impl Gateway {
     }
 
     pub fn open_port(&self, port: u16, protocol: Protocol) -> io::Result<bool> {
-        if port > 65535 {
-            return Err(io::Error::new(io::ErrorKind::Other, "Port is out of range."));
-        }
-
         let mut params = HashMap::new();
         params.insert("NewRemoteHost".to_string(), "".to_string());
         params.insert("NewProtocol".to_string(), protocol.value().to_string());
@@ -94,10 +90,6 @@ impl Gateway {
     }
 
     pub fn close_port(&self, port: u16, protocol: Protocol) -> io::Result<bool> {
-        if port > 65535 {
-            return Err(io::Error::new(io::ErrorKind::Other, "Port is out of range."));
-        }
-
         let mut params = HashMap::new();
         params.insert("NewRemoteHost".to_string(), "".to_string());
         params.insert("NewProtocol".to_string(), protocol.value().to_string());
