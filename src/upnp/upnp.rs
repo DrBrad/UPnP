@@ -17,15 +17,15 @@ impl UPnP {
 
     pub fn new(local_addr: IpAddr) -> io::Result<Self> {
         let socket = UdpSocket::bind(SocketAddr::new(local_addr, 0))?;
+        let address = SocketAddr::new(IpAddr::from([239, 255, 255, 250]), 1900);
 
         for req in REQUESTS {
-            let address = SocketAddr::new(IpAddr::from([239, 255, 255, 250]), 1900);
             socket.send_to(req.as_bytes(), address)?;
 
             let mut buf = [0; 1536];
             match socket.recv_from(&mut buf) {
                 Ok((size, src_addr)) => {
-                    let gateway = Gateway::new(&buf, size, local.ip())?;
+                    let gateway = Gateway::new(&buf, size, socket.local_addr().unwrap().ip())?;
 
                     return Ok(Self {
                         gateway: Some(gateway)
