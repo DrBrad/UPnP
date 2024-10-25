@@ -49,7 +49,8 @@ impl Gateway {
         let doc = roxmltree::Document::parse(response_str.split("\r\n\r\n").last().unwrap())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
 
-        let root = doc.root_element().descendants().find(|node| node.tag_name().name() == "deviceList").unwrap()
+        let root = doc.root_element().descendants().find(|node| node.tag_name().name() == "device").unwrap()
+            .descendants().find(|node| node.tag_name().name() == "deviceList").unwrap()
             .descendants().find(|node| node.tag_name().name() == "device").unwrap()
             .descendants().find(|node| node.tag_name().name() == "deviceList").unwrap()
             .descendants().find(|node| node.tag_name().name() == "device").unwrap()
